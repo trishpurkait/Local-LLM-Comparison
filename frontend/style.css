@@ -1,0 +1,270 @@
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    font-family: Arial, Helvetica, sans-serif;
+    background: #f4f6f8;
+    color: #111827;
+}
+
+.container {
+    max-width: 1150px;
+    margin: auto;
+    padding: 32px;
+}
+
+.hero {
+    text-align: center;
+    margin-bottom: 32px;
+}
+
+.hero h1 {
+    font-size: 48px;
+    margin-bottom: 8px;
+}
+
+.hero p {
+    color: #6b7280;
+    font-size: 18px;
+}
+
+.card {
+    background: #ffffff;
+    padding: 24px;
+    margin-bottom: 24px;
+    border-radius: 16px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+
+#selected-count {
+    font-size: 14px;
+    color: #2563eb;
+    font-weight: bold;
+}
+
+button {
+    border: none;
+    border-radius: 8px;
+    padding: 10px 16px;
+    background: #e5e7eb;
+    color: #111827;
+    cursor: pointer;
+    font-weight: bold;
+    margin: 8px 0;
+}
+
+button:hover {
+    background: #d1d5db;
+}
+
+button.primary {
+    background: #2563eb;
+    color: white;
+}
+
+button.primary:hover {
+    background: #1d4ed8;
+}
+
+.model-list {
+    margin-top: 16px;
+}
+
+.model-item,
+.prompt-item {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    padding: 12px;
+    border-radius: 10px;
+    margin-bottom: 10px;
+}
+
+.model-item label {
+    cursor: pointer;
+}
+
+textarea {
+    width: 100%;
+    min-height: 100px;
+    margin-top: 16px;
+    padding: 12px;
+    border-radius: 10px;
+    border: 1px solid #d1d5db;
+    resize: vertical;
+    font-size: 15px;
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 16px;
+}
+
+th,
+td {
+    border-bottom: 1px solid #e5e7eb;
+    padding: 12px;
+    text-align: left;
+    vertical-align: top;
+}
+
+th {
+    background: #f9fafb;
+}
+
+.hidden {
+    display: none;
+}
+
+#status {
+    font-weight: bold;
+    color: #374151;
+}
+
+.recommendation-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 14px;
+    margin-bottom: 16px;
+}
+
+.recommendation-card {
+    background: #f9fafb;
+    padding: 14px;
+    border-radius: 12px;
+    border: 1px solid #e5e7eb;
+}
+
+.recommendation-card strong {
+    display: block;
+    color: #374151;
+    margin-bottom: 6px;
+}
+
+.result-box {
+    background: #f9fafb;
+    border: 1px solid #e5e7eb;
+    border-radius: 12px;
+    padding: 16px;
+    margin-bottom: 16px;
+    white-space: pre-wrap;
+}
+
+.badge {
+    display: inline-block;
+    padding: 5px 10px;
+    background: #dbeafe;
+    color: #1e40af;
+    border-radius: 999px;
+    font-size: 13px;
+    font-weight: bold;
+    margin-bottom: 10px;
+}
+
+.error {
+    color: #dc2626;
+    font-weight: bold;
+}
+.table-note {
+    margin-top: 12px;
+    color: #6b7280;
+    font-size: 14px;
+}
+.progress-wrapper {
+    margin-top: 16px;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 14px;
+    background: #e5e7eb;
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    width: 0%;
+    background: #2563eb;
+    transition: width 0.3s ease;
+}
+
+#progress-text {
+    margin-top: 8px;
+    font-weight: bold;
+    color: #374151;
+}
+
+.live-result {
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+    padding: 16px;
+    border-radius: 12px;
+    margin-bottom: 14px;
+}
+
+.live-result-header {
+    display: flex;
+    justify-content: space-between;
+    gap: 12px;
+    flex-wrap: wrap;
+    margin-bottom: 10px;
+}
+
+.live-result-response {
+    white-space: pre-wrap;
+    margin-top: 10px;
+}
+.metric-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 10px;
+    margin: 14px 0;
+}
+
+.metric-card {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    border-radius: 10px;
+    padding: 10px;
+}
+
+.metric-card strong {
+    display: block;
+    font-size: 13px;
+    color: #6b7280;
+    margin-bottom: 4px;
+}
+
+.metric-card span {
+    font-size: 16px;
+    font-weight: bold;
+    color: #111827;
+}
+
+@media (max-width: 768px) {
+    .metric-grid {
+        grid-template-columns: 1fr;
+    }
+}
+@media (max-width: 768px) {
+    .container {
+        padding: 18px;
+    }
+
+    .recommendation-grid {
+        grid-template-columns: 1fr;
+    }
+
+    table {
+        font-size: 13px;
+    }
+}

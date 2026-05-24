@@ -1,0 +1,26 @@
+[
+  {
+    "category": "reasoning",
+    "prompt": "A farmer has 17 sheep. All but 9 run away. How many sheep are left? Explain briefly."
+  },
+  {
+    "category": "coding",
+    "prompt": "Write a Python function to check whether a string is a palindrome. Keep it simple."
+  },
+  {
+    "category": "summarization",
+    "prompt": "Summarize this paragraph in 3 bullet points: Artificial intelligence is changing healthcare, education, finance, and software development by automating repetitive tasks and helping humans make better decisions."
+  },
+  {
+    "category": "instruction_following",
+    "prompt": "Explain photosynthesis in exactly 3 sentences."
+  },
+  {
+    "category": "factual_explanation",
+    "prompt": "Explain the difference between RAM and storage in simple terms."
+  },
+  {
+    "category": "creative_writing",
+    "prompt": "Write a short 4-line poem about learning programming."
+  }
+]

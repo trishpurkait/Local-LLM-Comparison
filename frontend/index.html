@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>LocalEval - Local LLM Evaluation Platform</title>
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+    <main class="container">
+        <header class="hero">
+            <h1>LocalEval</h1>
+            <p>Compare 2 to 5 local Ollama models using objective performance metrics.</p>
+        </header>
+
+        <section class="card">
+            <div class="section-header">
+                <h2>1. Select 2 to 5 Local Models</h2>
+                <span id="selected-count">0 selected</span>
+            </div>
+
+            <button onclick="loadModels()">Load Local Models</button>
+
+            <div id="model-list" class="model-list"></div>
+        </section>
+
+        <section class="card">
+            <h2>2. Select Benchmark Prompts</h2>
+
+            <button onclick="loadDefaultPrompts()">Load Default Prompts</button>
+
+            <textarea
+                id="custom-prompt"
+                placeholder="Optional: Enter your own custom prompt..."
+            ></textarea>
+
+            <button onclick="addCustomPrompt()">Add Custom Prompt</button>
+
+            <div id="prompt-list"></div>
+        </section>
+
+        <section class="card">
+            <h2>3. Run Evaluation</h2>
+
+            <button class="primary" onclick="runEvaluation()">Run Evaluation</button>
+
+            <p id="status"></p>
+            <div class="progress-wrapper hidden" id="progress-wrapper">
+                <div class="progress-bar">
+                    <div class="progress-fill" id="progress-fill"></div>
+                </div>
+                <p id="progress-text">0%</p>
+            </div>
+        </section>
+
+        <section class="card hidden" id="live-section">
+            <h2>Live Evaluation Output</h2>
+            <div id="live-results"></div>
+        </section>
+
+        <section class="card hidden" id="recommendation-section">
+            <h2>Recommendation</h2>
+            <div id="recommendation"></div>
+        </section>
+
+        <section class="card hidden" id="results-section">
+            <h2>Comparison Table</h2>
+
+            <table id="summary-table">
+                <thead>
+                    <tr>
+                        <th>Model</th>
+                        <th>Success Rate</th>
+                        <th>Avg Generation</th>
+                        <th>Total Generation</th>
+                        <th>Cold Start</th>
+                        <th>Words/Sec</th>
+                        <th>Tokens/Sec</th>
+                        <th>Total Words</th>
+                        <th>Failures</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+            <p class="table-note">
+                Main comparison uses generation latency only. Cold start means the initial model loading time and is shown separately because it usually happens once when the model is first loaded.
+            </p>
+        </section>
+
+        <section class="card hidden" id="details-section">
+            <h2>Detailed Responses</h2>
+            <div id="details"></div>
+        </section>
+    </main>
+
+    <script src="/static/script.js"></script>
+</body>
+</html>
