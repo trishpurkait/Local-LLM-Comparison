@@ -10,11 +10,10 @@ from app.schemas import EvaluationRequest
 from app.storage import save_report, load_report, list_reports
 
 
-
 app = FastAPI(
     title="LocalEval",
     description="Local LLM Evaluation and Comparison Platform using FastAPI and Ollama",
-    version="1.0.0"
+    version="2.0.0"
 )
 
 
