@@ -2,180 +2,272 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>LocalEval - Local LLM Decision Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LocalEval — Local LLM Benchmark Suite</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="/static/style.css">
-
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
+    <div class="noise-overlay"></div>
+    <div class="grid-bg"></div>
+
+    <nav class="topbar">
+        <div class="topbar-inner">
+            <div class="logo">
+                <span class="logo-bracket">[</span>
+                <span class="logo-text">LocalEval</span>
+                <span class="logo-bracket">]</span>
+            </div>
+            <div class="topbar-meta">
+                <span class="meta-item" id="ollama-status">
+                    <span class="status-dot"></span>
+                    Ollama
+                </span>
+                <span class="meta-item mono">v1.0.0</span>
+            </div>
+        </div>
+    </nav>
+
     <main class="container">
+
+        <!-- HERO -->
         <header class="hero">
-            <h1>LocalEval</h1>
-            <p>Find the best local Ollama model for your system and work.</p>
+            <div class="hero-eyebrow mono">// benchmark suite for local llms</div>
+            <h1 class="hero-title">
+                Find the model<br>
+                <span class="accent">that fits your machine.</span>
+            </h1>
+            <p class="hero-sub">
+                Run structured benchmarks across your Ollama models. Compare latency,<br>
+                throughput, reliability, and answer quality — all on your hardware.
+            </p>
+            <div class="hero-tags">
+                <span class="tag">Latency</span>
+                <span class="tag">Throughput</span>
+                <span class="tag">Reliability</span>
+                <span class="tag">Quality</span>
+                <span class="tag">Offline</span>
+            </div>
         </header>
 
-        <section class="card intro-card">
-            <h2>What LocalEval Does</h2>
-            <p>
-                LocalEval compares local LLMs on your own machine and helps you decide which model is best for speed,
-                reliability, detailed answers, and balanced daily use.
-            </p>
+        <!-- STEP 1: MODELS -->
+        <section class="panel" id="step-models">
+            <div class="panel-header">
+                <div class="step-label mono">STEP_01</div>
+                <h2 class="panel-title">Select Models</h2>
+                <div class="panel-actions">
+                    <span class="selected-badge" id="selected-count">0 selected</span>
+                    <button class="btn-outline" onclick="loadModels()">
+                        <span class="btn-icon">⟳</span> Scan Ollama
+                    </button>
+                </div>
+            </div>
+            <p class="panel-hint">Select between 2 and 5 locally installed Ollama models to compare.</p>
+            <div id="model-list" class="model-grid">
+                <div class="empty-state">
+                    <span class="empty-icon mono">{ }</span>
+                    <p>Click "Scan Ollama" to discover installed models.</p>
+                </div>
+            </div>
         </section>
 
-        <section class="card">
-            <div class="section-header">
-                <h2>1. Select 2 to 5 Local Models</h2>
-                <span id="selected-count">0 selected</span>
+        <!-- STEP 2: PROMPTS -->
+        <section class="panel" id="step-prompts">
+            <div class="panel-header">
+                <div class="step-label mono">STEP_02</div>
+                <h2 class="panel-title">Benchmark Prompts</h2>
+                <button class="btn-outline" onclick="loadDefaultPrompts()">
+                    <span class="btn-icon">↓</span> Load Defaults
+                </button>
+            </div>
+            <p class="panel-hint">Use the default prompt suite or add your own. Each prompt runs across all selected models.</p>
+
+            <div class="prompt-input-row">
+                <textarea
+                    id="custom-prompt"
+                    placeholder="Type a custom prompt and press Add..."
+                ></textarea>
+                <button class="btn-primary vertical-btn" onclick="addCustomPrompt()">Add</button>
             </div>
 
-            <button onclick="loadModels()">Load Local Models</button>
-
-            <div id="model-list" class="model-list"></div>
+            <div id="prompt-list" class="prompt-list">
+                <div class="empty-state">
+                    <span class="empty-icon mono">[ ]</span>
+                    <p>No prompts loaded yet.</p>
+                </div>
+            </div>
         </section>
 
-        <section class="card">
-            <h2>2. Select Benchmark Prompts</h2>
+        <!-- STEP 3: QUALITY CHECK -->
+        <section class="panel" id="step-quality">
+            <div class="panel-header">
+                <div class="step-label mono">STEP_03</div>
+                <h2 class="panel-title">Answer Quality Check</h2>
+                <span class="tag tag-optional">Optional</span>
+            </div>
+            <p class="panel-hint">Objective metrics are measured locally. Enable this to also evaluate answer usefulness via an external NVIDIA NIM judge model (Llama 3.1 70B).</p>
 
-            <button onclick="loadDefaultPrompts()">Load Default Prompts</button>
-
-            <textarea
-                id="custom-prompt"
-                placeholder="Optional: Enter your own custom prompt..."
-            ></textarea>
-
-            <button onclick="addCustomPrompt()">Add Custom Prompt</button>
-
-            <div id="prompt-list"></div>
-        </section>
-
-        <section class="card">
-            <h2>3. Answer Quality Check</h2>
-
-            <label class="checkbox-row">
-                <input type="checkbox" id="enable-quality-check">
-                Enable Answer Quality Check using NVIDIA NIM Llama 3.1 70B
+            <label class="toggle-row">
+                <div class="toggle-switch">
+                    <input type="checkbox" id="enable-quality-check">
+                    <span class="toggle-track">
+                        <span class="toggle-thumb"></span>
+                    </span>
+                </div>
+                <span class="toggle-label">Enable NVIDIA NIM Quality Judge</span>
             </label>
-
-            <p class="table-note">
-                Objective performance metrics are measured locally. If enabled, answer quality is reviewed by an external NVIDIA NIM judge model.
-            </p>
         </section>
 
-        <section class="card">
-            <h2>4. Run Evaluation</h2>
-
-            <button class="primary" onclick="runEvaluation()">Run Evaluation</button>
-
-            <p id="status"></p>
-
+        <!-- STEP 4: RUN -->
+        <section class="panel panel-run" id="step-run">
+            <div class="panel-header">
+                <div class="step-label mono">STEP_04</div>
+                <h2 class="panel-title">Run Evaluation</h2>
+            </div>
+            <div class="run-row">
+                <button class="btn-primary btn-large" onclick="runEvaluation()">
+                    <span class="run-icon">▶</span>
+                    Run Benchmark
+                </button>
+                <p id="status" class="status-text mono"></p>
+            </div>
             <div class="progress-wrapper hidden" id="progress-wrapper">
-                <div class="progress-bar">
+                <div class="progress-track">
                     <div class="progress-fill" id="progress-fill"></div>
                 </div>
-                <p id="progress-text">0%</p>
+                <p id="progress-text" class="mono progress-label">0%</p>
             </div>
         </section>
 
-        <section class="card hidden" id="live-section">
-            <h2>Live Evaluation Output</h2>
-            <p class="table-note">
-                Results appear here as soon as each prompt completes.
-            </p>
-            <div id="live-results"></div>
+        <!-- LIVE OUTPUT -->
+        <section class="panel hidden" id="live-section">
+            <div class="panel-header">
+                <div class="step-label mono live-pulse">LIVE</div>
+                <h2 class="panel-title">Live Output</h2>
+                <span class="mono dim" style="font-size:13px">Results stream as each prompt completes</span>
+            </div>
+            <div id="live-results" class="live-feed"></div>
         </section>
 
-        <section class="card hidden" id="recommendation-section">
-            <h2>Decision Dashboard</h2>
+        <!-- DECISION DASHBOARD -->
+        <section class="panel hidden" id="recommendation-section">
+            <div class="panel-header">
+                <div class="step-label mono">RESULT</div>
+                <h2 class="panel-title">Decision Dashboard</h2>
+            </div>
             <div id="recommendation"></div>
         </section>
 
-        <section class="card hidden" id="quality-section">
-            <h2>Answer Quality Summary</h2>
+        <!-- QUALITY SUMMARY -->
+        <section class="panel hidden" id="quality-section">
+            <div class="panel-header">
+                <div class="step-label mono">QUALITY</div>
+                <h2 class="panel-title">Answer Quality Summary</h2>
+            </div>
             <div id="quality-summary"></div>
-
-            <h3>Quality Scores</h3>
-            <table id="quality-table">
-                <thead>
-                    <tr>
-                        <th>Model</th>
-                        <th>Matches Question</th>
-                        <th>Easy to Understand</th>
-                        <th>Covers Detail</th>
-                        <th>Factually Reliable</th>
-                        <th>Follows Instructions</th>
-                        <th>Overall Quality</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-
-            <p class="table-note">
-                Quality scores are estimated by an external judge model and should be used as guidance, not absolute truth.
-            </p>
+            <div class="table-wrapper">
+                <table id="quality-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Matches Question</th>
+                            <th>Easy to Understand</th>
+                            <th>Covers Detail</th>
+                            <th>Factually Reliable</th>
+                            <th>Follows Instructions</th>
+                            <th>Overall Quality</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <p class="table-note mono">Quality scores are estimated by an external judge model — use as guidance, not ground truth.</p>
         </section>
 
-        <section class="card hidden" id="chart-section">
-            <h2>Performance Charts</h2>
-
+        <!-- CHARTS -->
+        <section class="panel hidden" id="chart-section">
+            <div class="panel-header">
+                <div class="step-label mono">CHARTS</div>
+                <h2 class="panel-title">Performance Charts</h2>
+            </div>
             <div class="chart-grid">
                 <div class="chart-card">
-                    <h3>Average Generation Latency</h3>
+                    <h3 class="chart-title">Avg Generation Latency</h3>
                     <canvas id="latencyChart"></canvas>
                 </div>
-
                 <div class="chart-card">
-                    <h3>Tokens Per Second</h3>
+                    <h3 class="chart-title">Tokens Per Second</h3>
                     <canvas id="tokensChart"></canvas>
                 </div>
-
                 <div class="chart-card">
-                    <h3>Total Words</h3>
+                    <h3 class="chart-title">Total Words Generated</h3>
                     <canvas id="wordsChart"></canvas>
                 </div>
-
                 <div class="chart-card">
-                    <h3>Success Rate</h3>
+                    <h3 class="chart-title">Success Rate</h3>
                     <canvas id="successChart"></canvas>
                 </div>
             </div>
         </section>
 
-        <section class="card hidden" id="results-section">
-            <h2>Comparison Table</h2>
-
-            <table id="summary-table">
-                <thead>
-                    <tr>
-                        <th>Model</th>
-                        <th>Success Rate</th>
-                        <th>Avg Generation</th>
-                        <th>Total Generation</th>
-                        <th>Cold Start</th>
-                        <th>Words/Sec</th>
-                        <th>Tokens/Sec</th>
-                        <th>Total Words</th>
-                        <th>Failures</th>
-                    </tr>
-                </thead>
-                <tbody></tbody>
-            </table>
-
-            <p class="table-note">
-                Main comparison uses generation latency only. Cold start means the initial model loading time and is shown separately because it usually happens once when the model is first loaded.
-            </p>
+        <!-- COMPARISON TABLE -->
+        <section class="panel hidden" id="results-section">
+            <div class="panel-header">
+                <div class="step-label mono">TABLE</div>
+                <h2 class="panel-title">Comparison Table</h2>
+            </div>
+            <div class="table-wrapper">
+                <table id="summary-table">
+                    <thead>
+                        <tr>
+                            <th>Model</th>
+                            <th>Success Rate</th>
+                            <th>Avg Generation</th>
+                            <th>Total Generation</th>
+                            <th>Cold Start</th>
+                            <th>Words/Sec</th>
+                            <th>Tokens/Sec</th>
+                            <th>Total Words</th>
+                            <th>Failures</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <p class="table-note mono">Generation latency excludes cold start (model load time), which typically occurs once.</p>
         </section>
 
-        <section class="card">
-            <div class="section-header">
-                <h2>Recent Evaluations</h2>
-                <button onclick="loadHistory()">Refresh History</button>
+        <!-- HISTORY -->
+        <section class="panel" id="step-history">
+            <div class="panel-header">
+                <div class="step-label mono">HISTORY</div>
+                <h2 class="panel-title">Recent Evaluations</h2>
+                <button class="btn-outline" onclick="loadHistory()">
+                    <span class="btn-icon">⟳</span> Refresh
+                </button>
             </div>
-
             <div id="history-list">
-                <p>No history loaded yet.</p>
+                <div class="empty-state">
+                    <span class="empty-icon mono">~</span>
+                    <p>No history loaded yet.</p>
+                </div>
             </div>
         </section>
+
     </main>
+
+    <footer class="footer">
+        <div class="footer-inner mono">
+            <span>LocalEval</span>
+            <span class="dim">·</span>
+            <span class="dim">FastAPI + Ollama</span>
+            <span class="dim">·</span>
+            <a href="https://github.com/trishpurkait/Local-LLM-Comparison" target="_blank" class="footer-link">GitHub ↗</a>
+        </div>
+    </footer>
 
     <script src="/static/script.js"></script>
 </body>

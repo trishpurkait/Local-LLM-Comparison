@@ -7,9 +7,12 @@ let tokensChart = null;
 let wordsChart = null;
 let successChart = null;
 
+/* ============================================
+   MODEL LOADING
+   ============================================ */
 async function loadModels() {
     const modelList = document.getElementById("model-list");
-    modelList.innerHTML = "Loading local Ollama models...";
+    modelList.innerHTML = `<div class="empty-state"><span class="empty-icon mono">⟳</span><p>Scanning Ollama for installed models...</p></div>`;
 
     try {
         const response = await fetch("/models");
@@ -20,11 +23,7 @@ async function loadModels() {
         }
 
         if (!data.models || data.models.length === 0) {
-            modelList.innerHTML = `
-                <p class="error">
-                    No Ollama models found. Pull at least 2 models using ollama pull.
-                </p>
-            `;
+            modelList.innerHTML = `<div class="error-box">No Ollama models found. Pull at least 2 models using <code>ollama pull &lt;model&gt;</code></div>`;
             return;
         }
 
@@ -32,10 +31,12 @@ async function loadModels() {
         updateSelectedCount();
 
         modelList.innerHTML = "";
+        modelList.className = "model-grid";
 
         data.models.forEach(model => {
             const div = document.createElement("div");
             div.className = "model-item";
+            div.dataset.model = model;
 
             div.innerHTML = `
                 <label>
@@ -48,36 +49,41 @@ async function loadModels() {
         });
 
     } catch (error) {
-        modelList.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+        modelList.innerHTML = `<div class="error-box">${escapeHtml(error.message)}</div>`;
     }
 }
 
 function toggleModel(checkbox) {
     const model = checkbox.value;
+    const item = checkbox.closest(".model-item");
 
     if (checkbox.checked) {
         if (selectedModels.length >= 5) {
             checkbox.checked = false;
-            alert("You can select up to 5 models only.");
+            showToast("You can select up to 5 models only.");
             return;
         }
-
         selectedModels.push(model);
+        item.classList.add("selected");
     } else {
-        selectedModels = selectedModels.filter(item => item !== model);
+        selectedModels = selectedModels.filter(m => m !== model);
+        item.classList.remove("selected");
     }
 
     updateSelectedCount();
 }
 
 function updateSelectedCount() {
-    const selectedCount = document.getElementById("selected-count");
-    selectedCount.textContent = `${selectedModels.length} selected`;
+    const el = document.getElementById("selected-count");
+    el.textContent = `${selectedModels.length} selected`;
 }
 
+/* ============================================
+   PROMPT MANAGEMENT
+   ============================================ */
 async function loadDefaultPrompts() {
     const promptList = document.getElementById("prompt-list");
-    promptList.innerHTML = "Loading default prompts...";
+    promptList.innerHTML = `<div class="empty-state"><span class="empty-icon mono">⟳</span><p>Loading default prompts...</p></div>`;
 
     try {
         const response = await fetch("/default-prompts");
@@ -91,7 +97,7 @@ async function loadDefaultPrompts() {
         renderPrompts();
 
     } catch (error) {
-        promptList.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+        promptList.innerHTML = `<div class="error-box">${escapeHtml(error.message)}</div>`;
     }
 }
 
@@ -100,15 +106,11 @@ function addCustomPrompt() {
     const promptText = textarea.value.trim();
 
     if (!promptText) {
-        alert("Please enter a custom prompt first.");
+        showToast("Please enter a custom prompt first.");
         return;
     }
 
-    prompts.push({
-        category: "custom",
-        prompt: promptText
-    });
-
+    prompts.push({ category: "custom", prompt: promptText });
     textarea.value = "";
     renderPrompts();
 }
@@ -123,7 +125,7 @@ function renderPrompts() {
     promptList.innerHTML = "";
 
     if (prompts.length === 0) {
-        promptList.innerHTML = "<p>No prompts selected yet.</p>";
+        promptList.innerHTML = `<div class="empty-state"><span class="empty-icon mono">[ ]</span><p>No prompts loaded yet.</p></div>`;
         return;
     }
 
@@ -132,15 +134,20 @@ function renderPrompts() {
         div.className = "prompt-item";
 
         div.innerHTML = `
-            <strong>${index + 1}. ${escapeHtml(item.category)}</strong>
-            <p>${escapeHtml(item.prompt)}</p>
-            <button onclick="removePrompt(${index})">Remove</button>
+            <div class="prompt-content">
+                <div class="prompt-category">${escapeHtml(item.category)}</div>
+                <div class="prompt-text">${escapeHtml(item.prompt)}</div>
+            </div>
+            <button class="btn-danger" onclick="removePrompt(${index})">✕</button>
         `;
 
         promptList.appendChild(div);
     });
 }
 
+/* ============================================
+   EVALUATION
+   ============================================ */
 async function runEvaluation() {
     const status = document.getElementById("status");
     const liveSection = document.getElementById("live-section");
@@ -150,17 +157,16 @@ async function runEvaluation() {
     const progressText = document.getElementById("progress-text");
 
     if (selectedModels.length < 2 || selectedModels.length > 5) {
-        alert("Please select between 2 and 5 models.");
+        showToast("Please select between 2 and 5 models.");
         return;
     }
 
     if (prompts.length === 0) {
-        alert("Please add at least one prompt.");
+        showToast("Please add at least one prompt.");
         return;
     }
 
     hidePreviousResults();
-
     currentRunId = null;
 
     liveSection.classList.remove("hidden");
@@ -170,14 +176,12 @@ async function runEvaluation() {
     progressFill.style.width = "0%";
     progressText.textContent = "0%";
 
-    status.textContent = "Running evaluation. Results will appear as each prompt completes...";
+    status.textContent = "Initializing evaluation...";
 
     try {
         const response = await fetch("/evaluate-stream", {
             method: "POST",
-            headers: {
-                "Content-Type": "application/json"
-            },
+            headers: { "Content-Type": "application/json" },
             body: JSON.stringify({
                 models: selectedModels,
                 prompts: prompts,
@@ -192,26 +196,18 @@ async function runEvaluation() {
 
         const reader = response.body.getReader();
         const decoder = new TextDecoder("utf-8");
-
         let buffer = "";
 
         while (true) {
             const { value, done } = await reader.read();
-
-            if (done) {
-                break;
-            }
+            if (done) break;
 
             buffer += decoder.decode(value, { stream: true });
-
             const lines = buffer.split("\n");
             buffer = lines.pop();
 
             for (const line of lines) {
-                if (!line.trim()) {
-                    continue;
-                }
-
+                if (!line.trim()) continue;
                 const event = JSON.parse(line);
                 handleStreamEvent(event);
             }
@@ -239,10 +235,8 @@ function handleStreamEvent(event) {
 
     if (event.type === "result") {
         const percent = event.progress_percent || 0;
-
         progressFill.style.width = `${percent}%`;
         progressText.textContent = `${percent}% completed`;
-
         renderLiveResult(event.data);
         return;
     }
@@ -264,27 +258,21 @@ function handleStreamEvent(event) {
 
     if (event.type === "judge_result") {
         const percent = event.progress_percent || 0;
-
         status.textContent = `Answer Quality Check running... ${percent}% completed`;
-
         progressFill.style.width = `${percent}%`;
         progressText.textContent = `Quality check: ${percent}% completed`;
-
         return;
     }
 
     if (event.type === "judge_summary") {
         status.textContent = "Answer Quality Check completed.";
-
         progressFill.style.width = "100%";
         progressText.textContent = "Quality check completed";
-
         return;
     }
 
     if (event.type === "summary") {
         currentRunId = event.data.run_id;
-
         status.textContent = `Evaluation completed. Run ID: ${event.data.run_id}`;
 
         renderRecommendation(event.data);
@@ -297,99 +285,96 @@ function handleStreamEvent(event) {
     }
 }
 
+/* ============================================
+   RENDER LIVE RESULT
+   ============================================ */
 function renderLiveResult(result) {
     const liveResults = document.getElementById("live-results");
 
     const box = document.createElement("div");
     box.className = "live-result";
 
+    const statusClass = result.success ? "status-success" : "status-fail";
+    const statusText = result.success ? "✓ Success" : "✗ Failed";
+
     box.innerHTML = `
         <div class="live-result-header">
-            <span class="badge">${escapeHtml(result.model)} | ${escapeHtml(result.category)}</span>
-            <span><strong>Status:</strong> ${result.success ? "Success" : "Failed"}</span>
+            <span class="badge">${escapeHtml(result.model)} · ${escapeHtml(result.category)}</span>
+            <span class="${statusClass}">${statusText}</span>
         </div>
 
-        <p><strong>Prompt:</strong> ${escapeHtml(result.prompt)}</p>
+        <p style="font-size:13px; color: var(--text-secondary); margin-bottom:10px;">
+            <strong style="color:var(--text-dim); font-family:var(--font-mono); font-size:11px; text-transform:uppercase; letter-spacing:0.06em;">Prompt</strong><br>
+            ${escapeHtml(result.prompt)}
+        </p>
 
         <div class="metric-grid">
             <div class="metric-card">
                 <strong>Total Time</strong>
                 <span>${result.total_latency_seconds}s</span>
             </div>
-
             <div class="metric-card">
                 <strong>Cold Start</strong>
                 <span>${result.load_latency_seconds}s</span>
             </div>
-
             <div class="metric-card">
                 <strong>Prompt Eval</strong>
                 <span>${result.prompt_eval_latency_seconds}s</span>
             </div>
-
             <div class="metric-card">
                 <strong>Generation</strong>
                 <span>${result.generation_latency_seconds}s</span>
             </div>
-
-            <div class="metric-card">
-                <strong>Words</strong>
-                <span>${result.word_count}</span>
-            </div>
-
-            <div class="metric-card">
-                <strong>Characters</strong>
-                <span>${result.character_count}</span>
-            </div>
-
-            <div class="metric-card">
-                <strong>Output Tokens</strong>
-                <span>${result.output_token_count}</span>
-            </div>
-
             <div class="metric-card">
                 <strong>Words/Sec</strong>
                 <span>${result.words_per_second}</span>
             </div>
-
             <div class="metric-card">
                 <strong>Tokens/Sec</strong>
                 <span>${result.tokens_per_second}</span>
             </div>
+            <div class="metric-card">
+                <strong>Words</strong>
+                <span>${result.word_count}</span>
+            </div>
+            <div class="metric-card">
+                <strong>Characters</strong>
+                <span>${result.character_count}</span>
+            </div>
+            <div class="metric-card">
+                <strong>Output Tokens</strong>
+                <span>${result.output_token_count}</span>
+            </div>
         </div>
 
-        ${result.error ? `<p class="error"><strong>Error:</strong> ${escapeHtml(result.error)}</p>` : ""}
+        ${result.error ? `<div class="error-box" style="margin-top:10px;"><strong>Error:</strong> ${escapeHtml(result.error)}</div>` : ""}
 
-        <p><strong>Response:</strong></p>
-        <div class="live-result-response">
-            ${escapeHtml(result.response || "No response")}
-        </div>
+        <div class="live-result-response">${escapeHtml(result.response || "No response")}</div>
     `;
 
     liveResults.appendChild(box);
-
-    box.scrollIntoView({
-        behavior: "smooth",
-        block: "nearest"
-    });
+    box.scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
+/* ============================================
+   RENDER RECOMMENDATION
+   ============================================ */
 function renderRecommendation(data) {
     const section = document.getElementById("recommendation-section");
     const recommendation = document.getElementById("recommendation");
 
     section.classList.remove("hidden");
 
-    const fastestModel = data.ranking.fastest_model || "N/A";
-    const detailedModel = data.ranking.most_detailed_model || "N/A";
-    const reliableModel = data.ranking.most_reliable_model || "N/A";
-    const qualityModel = data.ranking.best_quality_model || "N/A";
-    const balancedModel = data.ranking.best_balanced_model || "N/A";
+    const fastestModel    = data.ranking.fastest_model || "N/A";
+    const detailedModel   = data.ranking.most_detailed_model || "N/A";
+    const reliableModel   = data.ranking.most_reliable_model || "N/A";
+    const qualityModel    = data.ranking.best_quality_model || "N/A";
+    const balancedModel   = data.ranking.best_balanced_model || "N/A";
 
     recommendation.innerHTML = `
         <div class="decision-grid">
             <div class="decision-card primary-decision">
-                <strong>Best for Your Current System</strong>
+                <strong>Best for Your System</strong>
                 <span>${escapeHtml(balancedModel)}</span>
                 <p>Best overall trade-off between speed, reliability, response detail, and quality.</p>
             </div>
@@ -401,15 +386,15 @@ function renderRecommendation(data) {
             </div>
 
             <div class="decision-card">
-                <strong>Best for Quick Answers</strong>
+                <strong>Fastest Model</strong>
                 <span>${escapeHtml(fastestModel)}</span>
                 <p>Recommended when you care most about lower generation time.</p>
             </div>
 
             <div class="decision-card">
-                <strong>Best for Detailed Answers</strong>
+                <strong>Most Detailed</strong>
                 <span>${escapeHtml(detailedModel)}</span>
-                <p>Recommended when longer and more detailed responses are useful.</p>
+                <p>Recommended when longer and more detailed responses matter.</p>
             </div>
 
             <div class="decision-card">
@@ -419,30 +404,26 @@ function renderRecommendation(data) {
             </div>
         </div>
 
-        <p><strong>Plain Recommendation:</strong> ${escapeHtml(data.ranking.recommendation)}</p>
+        <div class="recommendation-text">${escapeHtml(data.ranking.recommendation)}</div>
 
-        <p class="table-note">
-            Performance metrics are measured locally. Quality scores are produced by NVIDIA NIM when Answer Quality Check is enabled.
-        </p>
+        <p class="table-note mono">Performance metrics are measured locally. Quality scores are produced by NVIDIA NIM when Answer Quality Check is enabled.</p>
     `;
 }
 
+/* ============================================
+   RENDER QUALITY SECTION
+   ============================================ */
 function renderQualitySection(data) {
     const section = document.getElementById("quality-section");
     const qualitySummaryDiv = document.getElementById("quality-summary");
     const tbody = document.querySelector("#quality-table tbody");
 
-    if (
-        !data.enable_quality_check ||
-        !data.quality_summary ||
-        data.quality_summary.length === 0
-    ) {
+    if (!data.enable_quality_check || !data.quality_summary || data.quality_summary.length === 0) {
         section.classList.add("hidden");
         return;
     }
 
     section.classList.remove("hidden");
-
     qualitySummaryDiv.innerHTML = "";
     tbody.innerHTML = "";
 
@@ -465,7 +446,6 @@ function renderQualitySection(data) {
         grid.appendChild(card);
 
         const row = document.createElement("tr");
-
         row.innerHTML = `
             <td>${escapeHtml(item.model)}</td>
             <td>${item.average_matches_question}</td>
@@ -482,6 +462,9 @@ function renderQualitySection(data) {
     qualitySummaryDiv.appendChild(grid);
 }
 
+/* ============================================
+   RENDER SUMMARY TABLE
+   ============================================ */
 function renderSummaryTable(data) {
     const section = document.getElementById("results-section");
     const tbody = document.querySelector("#summary-table tbody");
@@ -491,7 +474,6 @@ function renderSummaryTable(data) {
 
     data.summary.forEach(item => {
         const row = document.createElement("tr");
-
         row.innerHTML = `
             <td>${escapeHtml(item.model)}</td>
             <td>${Math.round(item.success_rate * 100)}%</td>
@@ -503,105 +485,100 @@ function renderSummaryTable(data) {
             <td>${item.total_word_count}</td>
             <td>${item.failed_prompts}</td>
         `;
-
         tbody.appendChild(row);
     });
 }
 
+/* ============================================
+   RENDER CHARTS
+   ============================================ */
 function renderCharts(data) {
     const chartSection = document.getElementById("chart-section");
     chartSection.classList.remove("hidden");
 
-    const labels = data.summary.map(item => item.model);
+    const labels      = data.summary.map(i => i.model);
+    const latencyData = data.summary.map(i => i.average_generation_latency_seconds);
+    const tokensData  = data.summary.map(i => i.average_tokens_per_second);
+    const wordsData   = data.summary.map(i => i.total_word_count);
+    const successData = data.summary.map(i => Math.round(i.success_rate * 100));
 
-    const latencyData = data.summary.map(item => item.average_generation_latency_seconds);
-    const tokensData = data.summary.map(item => item.average_tokens_per_second);
-    const wordsData = data.summary.map(item => item.total_word_count);
-    const successData = data.summary.map(item => Math.round(item.success_rate * 100));
+    const accent  = "#e8ff47";
+    const blue    = "#3b82f6";
+    const green   = "#34d399";
+    const orange  = "#fb923c";
 
-    latencyChart = createOrUpdateChart(
-        latencyChart,
-        "latencyChart",
-        "Avg Generation Latency (s)",
-        labels,
-        latencyData
-    );
-
-    tokensChart = createOrUpdateChart(
-        tokensChart,
-        "tokensChart",
-        "Tokens/Sec",
-        labels,
-        tokensData
-    );
-
-    wordsChart = createOrUpdateChart(
-        wordsChart,
-        "wordsChart",
-        "Total Words",
-        labels,
-        wordsData
-    );
-
-    successChart = createOrUpdateChart(
-        successChart,
-        "successChart",
-        "Success Rate (%)",
-        labels,
-        successData
-    );
+    latencyChart = createOrUpdateChart(latencyChart, "latencyChart", "Avg Generation Latency (s)", labels, latencyData, accent);
+    tokensChart  = createOrUpdateChart(tokensChart,  "tokensChart",  "Tokens/Sec", labels, tokensData, blue);
+    wordsChart   = createOrUpdateChart(wordsChart,   "wordsChart",   "Total Words", labels, wordsData, green);
+    successChart = createOrUpdateChart(successChart, "successChart", "Success Rate (%)", labels, successData, orange);
 }
 
-function createOrUpdateChart(existingChart, canvasId, label, labels, values) {
-    if (existingChart) {
-        existingChart.destroy();
-    }
+function createOrUpdateChart(existing, canvasId, label, labels, values, color) {
+    if (existing) existing.destroy();
 
     const ctx = document.getElementById(canvasId).getContext("2d");
 
     return new Chart(ctx, {
         type: "bar",
         data: {
-            labels: labels,
-            datasets: [
-                {
-                    label: label,
-                    data: values
-                }
-            ]
+            labels,
+            datasets: [{
+                label,
+                data: values,
+                backgroundColor: color + "33",
+                borderColor: color,
+                borderWidth: 2,
+                borderRadius: 6,
+            }]
         },
         options: {
             responsive: true,
             plugins: {
                 legend: {
-                    display: true
+                    labels: {
+                        color: "#8892a0",
+                        font: { family: "'JetBrains Mono', monospace", size: 11 }
+                    }
                 }
             },
             scales: {
+                x: {
+                    ticks: {
+                        color: "#8892a0",
+                        font: { family: "'JetBrains Mono', monospace", size: 10 }
+                    },
+                    grid: { color: "#1e2329" }
+                },
                 y: {
-                    beginAtZero: true
+                    beginAtZero: true,
+                    ticks: {
+                        color: "#8892a0",
+                        font: { family: "'JetBrains Mono', monospace", size: 10 }
+                    },
+                    grid: { color: "#1e2329" }
                 }
             }
         }
     });
 }
 
+/* ============================================
+   HISTORY
+   ============================================ */
 async function loadHistory() {
     const historyList = document.getElementById("history-list");
-    historyList.innerHTML = "Loading history...";
+    historyList.innerHTML = `<div class="empty-state"><span class="empty-icon mono">⟳</span><p>Loading history...</p></div>`;
 
     try {
         const response = await fetch("/history");
         const data = await response.json();
 
-        if (!response.ok) {
-            throw new Error(data.detail || "Failed to load history.");
-        }
+        if (!response.ok) throw new Error(data.detail || "Failed to load history.");
 
         renderHistory(data.runs || []);
 
     } catch (error) {
-        historyList.innerHTML = `<p class="error">${escapeHtml(error.message)}</p>`;
+        historyList.innerHTML = `<div class="error-box">${escapeHtml(error.message)}</div>`;
     }
 }
 
@@ -609,37 +586,37 @@ function renderHistory(runs) {
     const historyList = document.getElementById("history-list");
 
     if (!runs || runs.length === 0) {
-        historyList.innerHTML = "<p>No evaluation history found.</p>";
+        historyList.innerHTML = `<div class="empty-state"><span class="empty-icon mono">~</span><p>No evaluation history found.</p></div>`;
         return;
     }
 
     historyList.innerHTML = "";
 
+    const grid = document.createElement("div");
+    grid.className = "history-grid";
+
     runs.forEach(run => {
         const div = document.createElement("div");
         div.className = "history-item";
 
-        const models = Array.isArray(run.models)
-            ? run.models.join(", ")
-            : "N/A";
-
-        const bestModel = run.ranking && run.ranking.best_balanced_model
-            ? run.ranking.best_balanced_model
-            : "N/A";
+        const models = Array.isArray(run.models) ? run.models.join(", ") : "N/A";
+        const bestModel = run.ranking?.best_balanced_model || "N/A";
 
         div.innerHTML = `
-            <strong>${escapeHtml(run.run_id || "Unknown Run")}</strong>
-            <p><strong>Models:</strong> ${escapeHtml(models)}</p>
-            <p><strong>Total Prompts:</strong> ${run.total_prompts || 0}</p>
-            <p><strong>Best for Current System:</strong> ${escapeHtml(bestModel)}</p>
-
-            <div class="history-actions">
-                <button onclick="viewHistoryReport('${escapeHtml(run.run_id)}')">View Result</button>
+            <div class="history-meta">
+                <strong>${escapeHtml(run.run_id || "Unknown Run")}</strong>
+                <p>${escapeHtml(models)} · ${run.total_prompts || 0} prompts</p>
+            </div>
+            <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+                <span class="history-best">⭐ ${escapeHtml(bestModel)}</span>
+                <button class="btn-outline btn-sm" onclick="viewHistoryReport('${escapeHtml(run.run_id)}')">View ↗</button>
             </div>
         `;
 
-        historyList.appendChild(div);
+        grid.appendChild(div);
     });
+
+    historyList.appendChild(grid);
 }
 
 async function viewHistoryReport(runId) {
@@ -649,13 +626,10 @@ async function viewHistoryReport(runId) {
         const response = await fetch(`/results/${runId}`);
         const data = await response.json();
 
-        if (!response.ok) {
-            throw new Error(data.detail || "Failed to load report.");
-        }
+        if (!response.ok) throw new Error(data.detail || "Failed to load report.");
 
         currentRunId = data.run_id;
-
-        status.textContent = `Loaded previous report. Run ID: ${data.run_id}`;
+        status.textContent = `Loaded run: ${data.run_id}`;
 
         document.getElementById("live-section").classList.add("hidden");
         document.getElementById("progress-wrapper").classList.add("hidden");
@@ -665,39 +639,43 @@ async function viewHistoryReport(runId) {
         renderSummaryTable(data);
         renderCharts(data);
 
-        window.scrollTo({
-            top: document.getElementById("recommendation-section").offsetTop - 20,
-            behavior: "smooth"
-        });
+        window.scrollTo({ top: document.getElementById("recommendation-section").offsetTop - 20, behavior: "smooth" });
 
     } catch (error) {
         status.textContent = error.message;
     }
 }
 
+/* ============================================
+   UTILITIES
+   ============================================ */
 function hidePreviousResults() {
-    document.getElementById("recommendation-section").classList.add("hidden");
-    document.getElementById("quality-section").classList.add("hidden");
-    document.getElementById("results-section").classList.add("hidden");
-    document.getElementById("chart-section").classList.add("hidden");
+    ["recommendation-section", "quality-section", "results-section", "chart-section", "live-section", "progress-wrapper"]
+        .forEach(id => document.getElementById(id)?.classList.add("hidden"));
+}
 
-    const liveSection = document.getElementById("live-section");
-    const progressWrapper = document.getElementById("progress-wrapper");
+function showToast(message) {
+    // Simple toast fallback
+    const existing = document.querySelector(".toast");
+    if (existing) existing.remove();
 
-    if (liveSection) {
-        liveSection.classList.add("hidden");
-    }
-
-    if (progressWrapper) {
-        progressWrapper.classList.add("hidden");
-    }
+    const toast = document.createElement("div");
+    toast.className = "toast";
+    toast.textContent = message;
+    toast.style.cssText = `
+        position: fixed; bottom: 24px; right: 24px; z-index: 9999;
+        background: #1e2329; border: 1px solid #e8ff47;
+        color: #e8eaf0; padding: 12px 20px; border-radius: 10px;
+        font-family: 'JetBrains Mono', monospace; font-size: 13px;
+        box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+        animation: slide-in 0.2s ease;
+    `;
+    document.body.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
 }
 
 function escapeHtml(text) {
-    if (text === null || text === undefined) {
-        return "";
-    }
-
+    if (text === null || text === undefined) return "";
     return String(text)
         .replaceAll("&", "&amp;")
         .replaceAll("<", "&lt;")
